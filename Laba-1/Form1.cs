@@ -16,6 +16,74 @@ namespace Laba_1
             tabControl1.MouseDown += tabControl1_MouseDown;
             this.KeyPreview = true;
             this.KeyDown += Compiler_KeyDown;
+
+            // Разрешаем перетаскивание файлов в окно
+            this.AllowDrop = true;
+            this.DragEnter += Compiler_DragEnter;
+            this.DragDrop += Compiler_DragDrop;
+        }
+
+        private void Compiler_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effect = DragDropEffects.Copy;
+            }
+            else
+            {
+                e.Effect = DragDropEffects.None;
+            }
+        }
+
+        private void Compiler_DragDrop(object sender, DragEventArgs e)
+        {
+            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (files == null || files.Length == 0)
+                return;
+
+            foreach (string file in files)
+            {
+                if (File.Exists(file))
+                {
+                    // Создаем новую вкладку с именем файла
+                    TabPage newTab = new TabPage(Path.GetFileName(file));
+                    RichTextBox rtb = new RichTextBox
+                    {
+                        Dock = DockStyle.Fill,
+                        WordWrap = false,
+                        ScrollBars = RichTextBoxScrollBars.Both,
+                        RightMargin = int.MaxValue
+                    };
+
+                    DocumentInfo docInfo = new DocumentInfo
+                    {
+                        FilePath = file,
+                        IsModified = false
+                    };
+                    rtb.Tag = docInfo;
+
+                    try
+                    {
+                        rtb.Text = File.ReadAllText(file);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Ошибка при открытии файла: " + ex.Message);
+                        continue;
+                    }
+
+                    rtb.TextChanged += (s, ev) =>
+                    {
+                        docInfo.IsModified = true;
+                        if (!newTab.Text.EndsWith("*"))
+                            newTab.Text += "*";
+                    };
+
+                    newTab.Controls.Add(rtb);
+                    tabControl1.TabPages.Add(newTab);
+                    tabControl1.SelectedTab = newTab;
+                }
+            }
         }
 
         private void Compiler_KeyDown(object sender, KeyEventArgs e)
