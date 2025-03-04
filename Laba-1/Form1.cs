@@ -14,13 +14,86 @@ namespace Laba_1
             tabControl1.DrawMode = TabDrawMode.OwnerDrawFixed;
             tabControl1.DrawItem += tabControl1_DrawItem;
             tabControl1.MouseDown += tabControl1_MouseDown;
+            this.KeyPreview = true;
+            this.KeyDown += Compiler_KeyDown;
+        }
+
+        private void Compiler_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Control)
+            {
+                // Получаем активный RichTextBox из выбранной вкладки
+                RichTextBox rtb = GetActiveRichTextBox();
+                if (rtb == null) return;
+
+                // Обработка Ctrl + +
+                if (e.KeyCode == Keys.Oemplus)
+                {
+                    // Увеличиваем масштаб
+                    ChangeZoom(rtb, +0.1f);
+                    e.Handled = true;
+                }
+                // Обработка Ctrl + -
+                else if (e.KeyCode == Keys.OemMinus)
+                {
+                    // Уменьшаем масштаб
+                    ChangeZoom(rtb, -0.1f);
+                    e.Handled = true;
+                }
+            }
+        }
+
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            // Если зажата Ctrl, то меняем масштаб, иначе — обычная прокрутка
+            if ((ModifierKeys & Keys.Control) == Keys.Control)
+            {
+                RichTextBox rtb = GetActiveRichTextBox();
+                if (rtb != null)
+                {
+                    // e.Delta > 0 — прокрутка вверх (увеличить)
+                    // e.Delta < 0 — прокрутка вниз (уменьшить)
+                    float delta = (e.Delta > 0) ? +0.1f : -0.1f;
+                    ChangeZoom(rtb, delta);
+                }
+            }
+            else
+            {
+                // Базовое поведение, чтобы обычная прокрутка работала
+                base.OnMouseWheel(e);
+            }
+        }
+
+        private RichTextBox GetActiveRichTextBox()
+        {
+            if (tabControl1.TabPages.Count == 0)
+                return null;
+            TabPage activeTab = tabControl1.SelectedTab;
+            if (activeTab == null || activeTab.Controls.Count == 0)
+                return null;
+
+            return activeTab.Controls[0] as RichTextBox;
+        }
+
+        private void ChangeZoom(RichTextBox rtb, float delta)
+        {
+            float newZoom = rtb.ZoomFactor + delta;
+            // Ограничим масштаб, например, от 0.5 (50%) до 5.0 (500%)
+            if (newZoom < 0.5f) newZoom = 0.5f;
+            if (newZoom > 5.0f) newZoom = 5.0f;
+
+            rtb.ZoomFactor = newZoom;
         }
 
         // Метод для создания новой вкладки с RichTextBox
         private void CreateNewTab(string tabTitle)
         {
             TabPage newTab = new TabPage(tabTitle);
-            RichTextBox rtb = new RichTextBox { Dock = DockStyle.Fill };
+            RichTextBox rtb = new RichTextBox {
+                Dock = DockStyle.Fill,
+                WordWrap = false,
+                ScrollBars = RichTextBoxScrollBars.Both
+            };
 
             // Создаём объект DocumentInfo для хранения пути к файлу и статуса изменений
             DocumentInfo docInfo = new DocumentInfo();
